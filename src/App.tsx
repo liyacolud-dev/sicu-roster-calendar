@@ -73,7 +73,7 @@ export default function App() {
   const [debug, setDebug] = useState("");
   const [useCustom, setUseCustom] = useState(false);
 
-  const profile = PROFILES.find((p) => p.name === person);
+  const profile = PROFILES.find((p) => p.name.normalize("NFKC") === person.normalize("NFKC"));
   const customActive = useCustom && profile !== undefined;
 
   async function upload(f: File | null) {
