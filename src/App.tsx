@@ -3,6 +3,10 @@ import { extract, names, rowFor, detectYearMonth, debugInfo, nameDebug } from ".
 import { makeICS, downloadICS } from "./services/ics";
 import type { IcsOptions } from "./services/ics";
 import type { Entry, ShiftRule, TextItem } from "./types";
+import {
+  buildTimeTreePayload,
+  copyTimeTreePayload,
+} from "./services/timetree";
 
 // ===== 個人專屬設定：以後要幫別人加，就在這裡多加一筆 =====
 type Profile = {
@@ -164,7 +168,59 @@ export default function App() {
   const workRules = rules.filter((r) => WORK_CODES.includes(r.code));
   const noEntries = entries.length === 0;
   const altBtn = { background: "#115e59", marginTop: 8 };
+  async function copyForTimeTree() {
+    if (person === "") {
+      setMsg("請先選擇姓名");
+      return;
+    }
 
+    if (person !== "謝佩娟") {
+      setMsg("目前 TimeTree 直接匯入只開放謝佩娟測試。");
+      return;
+    }
+
+    try {
+      const payload = buildTimeTreePayload(
+        entries,
+        rules,
+        year,
+        month,
+        person
+      );
+
+      if (payload.events.length === 0) {
+        setMsg("沒有可匯入 TimeTree 的 D、E、N 班別。");
+        return;
+      }
+
+      await copyTimeTreePayload(payload);
+
+      const dayCount = payload.events.length;
+      const dCount = payload.events.filter(
+        (e) => e.shift === "D"
+      ).length;
+      const eCount = payload.events.filter(
+        (e) => e.shift === "E"
+      ).length;
+      const nCount = payload.events.filter(
+        (e) => e.shift === "N"
+      ).length;
+
+      setMsg(
+        "已複製 TimeTree 班表：" +
+          dayCount +
+          " 筆（白班 " +
+          dCount +
+          "、小夜班 " +
+          eCount +
+          "、大夜班 " +
+          nCount +
+          "）。請開啟 TimeTree 網頁並執行「SICU匯入」書籤。"
+      );
+    } catch (error) {
+      setMsg("複製失敗：" + String(error));
+    }
+  }
   return (
     <main>
       <header>
@@ -265,7 +321,17 @@ export default function App() {
             ))}
           </div>
         )}
-
+        {person === "謝佩娟" ? (
+          <button
+            className="primary"
+            type="button"
+            onClick={copyForTimeTree}
+            disabled={noEntries}
+            style={{ background: "#2563eb" }}
+          >
+            複製班表到 TimeTree
+          </button>
+        ) : null}
         {customActive ? (
           <div>
             <button className="primary" type="button" onClick={() => exportNow([], "-全部")} disabled={noEntries}>
