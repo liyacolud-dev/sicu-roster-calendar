@@ -300,7 +300,7 @@ const [
       </header>
 <section>
   <h2>
-    首次使用：安裝 TimeTree 匯入書籤
+    首次使用：安裝 TimeTree 匯入書籤(不使用TimeTree者可跳過此步驟)
   </h2>
 
   <p>
