@@ -332,6 +332,9 @@ export default function App() {
             複製班表到 TimeTree
           </button>
         ) : null}
+
+ <p className="status">{msg}</p>
+        
         {customActive ? (
           <div>
             <button className="primary" type="button" onClick={() => exportNow([], "-全部")} disabled={noEntries}>
