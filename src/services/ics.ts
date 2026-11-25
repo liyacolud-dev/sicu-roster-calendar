@@ -1,5 +1,11 @@
 import type { Entry, ShiftRule } from "../types";
 
+export type IcsOptions = {
+  sameDayOnly: boolean;
+  titles: Record<string, string>;
+  onlyCodes: string[];
+};
+
 const pad = (n: number): string => String(n).padStart(2, "0");
 
 function esc(s: string): string {
@@ -11,11 +17,11 @@ function esc(s: string): string {
 }
 
 function ymd(d: Date): string {
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+  return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
 }
 
 function hms(d: Date): string {
-  return `${pad(d.getHours())}${pad(d.getMinutes())}00`;
+  return pad(d.getHours()) + pad(d.getMinutes()) + "00";
 }
 
 export function makeICS(
@@ -23,12 +29,10 @@ export function makeICS(
   rules: ShiftRule[],
   year: number,
   month: number,
-  name: string
+  name: string,
+  opts?: IcsOptions
 ): string {
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d{3}/, "");
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 
   const lines: string[] = [
     "BEGIN:VCALENDAR",
@@ -49,43 +53,51 @@ export function makeICS(
   ];
 
   for (const e of entries) {
-    if (!e.enabled) continue;
+    if (e.enabled === false) continue;
+    if (opts && opts.onlyCodes.length > 0 && opts.onlyCodes.indexOf(e.main) < 0) continue;
 
     const rule = rules.find((r) => r.code === e.main);
-    if (!rule) continue;
+    if (rule === undefined) continue;
+
+    const custom = opts ? opts.titles[e.main] : undefined;
+    const title = custom ? custom : rule.label;
 
     const day = new Date(year, month - 1, e.day);
-    const uid = `${ymd(day)}-${e.main}-${encodeURIComponent(name)}@sicu-roster`;
+    const uid = ymd(day) + "-" + e.main + "-" + encodeURIComponent(name) + "@sicu-roster";
 
-    lines.push("BEGIN:VEVENT", `UID:${uid}`, `DTSTAMP:${stamp}`);
+    lines.push("BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + stamp);
+
+    let desc = "原始代碼：" + e.raw;
 
     if (rule.allDay) {
       const next = new Date(year, month - 1, e.day + 1);
-      lines.push(
-        `DTSTART;VALUE=DATE:${ymd(day)}`,
-        `DTEND;VALUE=DATE:${ymd(next)}`
-      );
+      lines.push("DTSTART;VALUE=DATE:" + ymd(day), "DTEND;VALUE=DATE:" + ymd(next));
     } else {
-      const [sh, sm] = rule.start.split(":").map(Number);
-      const [eh, em] = rule.end.split(":").map(Number);
+      const s = rule.start.split(":").map(Number);
+      const t = rule.end.split(":").map(Number);
+      const start = new Date(year, month - 1, e.day, s[0], s[1]);
+      let end = new Date(year, month - 1, e.day, t[0], t[1]);
 
-      const start = new Date(year, month - 1, e.day, sh, sm);
-      const end = new Date(year, month - 1, e.day, eh, em);
-
-      // 結束時間早於或等於開始時間，視為跨日（例如 E 班 16:00–00:00）
       if (end <= start) end.setDate(end.getDate() + 1);
 
+      // 專屬設定：跨夜班只顯示在開始當天
+      if (opts && opts.sameDayOnly && ymd(end) > ymd(start)) {
+        end = new Date(year, month - 1, e.day, 23, 59);
+      }
+
       lines.push(
-        `DTSTART;TZID=Asia/Taipei:${ymd(start)}T${hms(start)}`,
-        `DTEND;TZID=Asia/Taipei:${ymd(end)}T${hms(end)}`
+        "DTSTART;TZID=Asia/Taipei:" + ymd(start) + "T" + hms(start),
+        "DTEND;TZID=Asia/Taipei:" + ymd(end) + "T" + hms(end)
       );
+      desc = "實際時間：" + rule.start + "–" + rule.end + "；" + desc;
     }
 
-    const desc = `原始代碼：${e.raw}${e.note ? `；註記：${e.note}` : ""}`;
+    if (e.note) desc = desc + "；註記：" + e.note;
 
     lines.push(
-      `SUMMARY:${esc(rule.label)}`,
-      `DESCRIPTION:${esc(desc)}`,
+      "SUMMARY:" + esc(title),
+      "CATEGORIES:" + esc(title),
+      "DESCRIPTION:" + esc(desc),
       "END:VEVENT"
     );
   }
