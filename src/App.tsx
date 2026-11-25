@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { extract, names, rowFor, detectYearMonth, debugInfo } from "./services/parser";
+import { extract, names, rowFor, detectYearMonth, debugInfo, nameDebug } from "./services/parser";
 import { makeICS, downloadICS } from "./services/ics";
 import type { Entry, ShiftRule, TextItem } from "./types";
 
