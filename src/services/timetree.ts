@@ -176,3 +176,24 @@ export async function copyTimeTreePayload(
     throw new Error("瀏覽器無法使用剪貼簿");
   }
 }
+export function openTimeTreeImport(payload: TimeTreeImportPayload): void {
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+
+  let binary = "";
+
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+
+  const encoded = btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+
+  const target =
+    "https://timetreeapp.com/?sicu=" +
+    encodeURIComponent(encoded);
+
+  window.location.href = target;
+}
