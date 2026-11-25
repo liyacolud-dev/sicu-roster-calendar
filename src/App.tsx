@@ -398,14 +398,14 @@ export default function App() {
   <button
     className="primary"
     type="button"
-    onClick={goToTimeTree}
+    onClick={copyForTimeTree}
     disabled={noEntries}
     style={{
       background: "#2563eb",
       marginBottom: 12,
     }}
   >
-    前往 TimeTree 匯入
+    複製班表到 TimeTree
   </button>
 ) : null}
 
