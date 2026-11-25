@@ -6,7 +6,6 @@ import type { Entry, ShiftRule, TextItem } from "./types";
 import {
   buildTimeTreePayload,
   copyTimeTreePayload,
-  openTimeTreeImport,
 } from "./services/timetree";
 
 // ===== 個人專屬設定：以後要幫別人加，就在這裡多加一筆 =====
