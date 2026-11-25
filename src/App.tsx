@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 import {
   extract,
   names,
@@ -103,9 +102,9 @@ const WORK_RULES: ShiftRule[] = [
 ];
 
 const initialRules: ShiftRule[] = WORK_RULES.concat(
-  LEAVE_RULES.map((rule) => ({
-    code: rule.code,
-    label: rule.label,
+  LEAVE_RULES.map((r) => ({
+    code: r.code,
+    label: r.label,
     start: "00:00",
     end: "00:00",
     crosses: false,
@@ -141,8 +140,7 @@ export default function App() {
     profile !== undefined;
 
   const workRules = rules.filter(
-    (rule) =>
-      WORK_CODES.includes(rule.code)
+    (r) => WORK_CODES.includes(r.code)
   );
 
   const noEntries =
@@ -153,8 +151,10 @@ export default function App() {
     marginTop: 8,
   };
 
-  async function upload(file: File | null) {
-    if (file === null) {
+  async function upload(
+    f: File | null
+  ) {
+    if (f === null) {
       return;
     }
 
@@ -162,33 +162,34 @@ export default function App() {
     setDebug("");
 
     try {
-      const extracted = await extract(file);
-      const loadedNames = names(extracted);
-      const ym = detectYearMonth(extracted);
+      const x = await extract(f);
+      const ns = names(x);
+      const ym =
+        detectYearMonth(x);
 
       setYear(ym.year);
       setMonth(ym.month);
-      setItems(extracted);
-      setPeople(loadedNames);
+      setItems(x);
+      setPeople(ns);
       setUseCustom(false);
 
-      if (loadedNames.length > 0) {
-        const first =
-          loadedNames.slice(0, 1).join("");
+      if (ns.length > 0) {
+        const first = ns[0];
 
         setPerson(first);
+
         setEntries(
-          rowFor(extracted, first)
+          rowFor(x, first)
         );
 
         setMsg(
           "找到 " +
-            loadedNames.length +
+            ns.length +
             " 個可能姓名，請確認班表。"
         );
 
         setDebug(
-          nameDebug(extracted)
+          nameDebug(x)
         );
       } else {
         setPerson("");
@@ -199,60 +200,54 @@ export default function App() {
         );
 
         setDebug(
-          debugInfo(extracted)
+          debugInfo(x)
         );
       }
-    } catch (error) {
+    } catch (e) {
       setMsg(
         "PDF 讀取失敗：" +
-          String(error)
+          String(e)
       );
     }
   }
 
   function onFileChange(
-    event: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>
   ) {
-    const list =
-      event.target.files;
-
-    if (list === null) {
-      return;
-    }
-
-    upload(list.item(0));
+    upload(
+      e.target.files?.item(0) ??
+        null
+    );
   }
 
-  function choose(name: string) {
-    setPerson(name);
+  function choose(
+    n: string
+  ) {
+    setPerson(n);
     setUseCustom(false);
 
-    if (name === "") {
-      setEntries([]);
-      return;
-    }
-
     setEntries(
-      rowFor(items, name)
+      n === ""
+        ? []
+        : rowFor(items, n)
     );
   }
 
   function patch(
-    index: number,
-    values: Partial<Entry>
+    i: number,
+    p: Partial<Entry>
   ) {
     setEntries((list) =>
-      list.map((entry, i) => {
-        if (i === index) {
-          return Object.assign(
-            {},
-            entry,
-            values
-          );
-        }
-
-        return entry;
-      })
+      list.map(
+        (entry, index) =>
+          index === i
+            ? Object.assign(
+                {},
+                entry,
+                p
+              )
+            : entry
+      )
     );
   }
 
@@ -263,22 +258,30 @@ export default function App() {
   ) {
     setRules((list) =>
       list.map((rule) => {
-        if (rule.code !== code) {
+        if (
+          rule.code !== code
+        ) {
           return rule;
         }
 
-        if (field === "start") {
+        if (
+          field === "start"
+        ) {
           return Object.assign(
             {},
             rule,
-            { start: value }
+            {
+              start: value,
+            }
           );
         }
 
         return Object.assign(
           {},
           rule,
-          { end: value }
+          {
+            end: value,
+          }
         );
       })
     );
@@ -289,42 +292,41 @@ export default function App() {
     suffix: string
   ) {
     if (person === "") {
-      setMsg("請先選擇姓名");
+      setMsg(
+        "請先選擇姓名"
+      );
+
       return;
     }
 
-    let options: IcsOptions = {
+    let opts: IcsOptions = {
       sameDayOnly: false,
       titles: {},
-      onlyCodes: onlyCodes,
+      onlyCodes,
     };
 
     if (
       customActive &&
-      profile !== undefined
+      profile
     ) {
-      options = {
+      opts = {
         sameDayOnly:
           profile.sameDayOnly,
 
         titles:
           profile.titles,
 
-        onlyCodes:
-          onlyCodes,
+        onlyCodes,
       };
     }
-
-    const mm =
-      String(month).padStart(
-        2,
-        "0"
-      );
 
     const filename =
       year +
       "-" +
-      mm +
+      String(month).padStart(
+        2,
+        "0"
+      ) +
       "-" +
       person +
       suffix +
@@ -337,7 +339,7 @@ export default function App() {
         year,
         month,
         person,
-        options
+        opts
       );
 
     downloadICS(
@@ -357,10 +359,12 @@ export default function App() {
   ): string {
     if (
       customActive &&
-      profile !== undefined &&
+      profile &&
       profile.titles[code]
     ) {
-      return profile.titles[code];
+      return profile.titles[
+        code
+      ];
     }
 
     return "";
@@ -368,14 +372,20 @@ export default function App() {
 
   async function copyForTimeTree() {
     if (person === "") {
-      setMsg("請先選擇姓名");
+      setMsg(
+        "請先選擇姓名"
+      );
+
       return;
     }
 
-    if (person !== "謝佩娟") {
+    if (
+      person !== "謝佩娟"
+    ) {
       setMsg(
         "目前 TimeTree 直接匯入只開放謝佩娟測試。"
       );
+
       return;
     }
 
@@ -390,11 +400,13 @@ export default function App() {
         );
 
       if (
-        payload.events.length === 0
+        payload.events
+          .length === 0
       ) {
         setMsg(
           "沒有可匯入 TimeTree 的 D、E、N 班別。"
         );
+
         return;
       }
 
@@ -402,30 +414,27 @@ export default function App() {
         payload
       );
 
-      const total =
-        payload.events.length;
-
       const dCount =
         payload.events.filter(
-          (event) =>
-            event.shift === "D"
+          (e) =>
+            e.shift === "D"
         ).length;
 
       const eCount =
         payload.events.filter(
-          (event) =>
-            event.shift === "E"
+          (e) =>
+            e.shift === "E"
         ).length;
 
       const nCount =
         payload.events.filter(
-          (event) =>
-            event.shift === "N"
+          (e) =>
+            e.shift === "N"
         ).length;
 
       setMsg(
         "已複製 TimeTree 班表：" +
-          total +
+          payload.events.length +
           " 筆（白班 " +
           dCount +
           "、小夜班 " +
@@ -469,7 +478,9 @@ export default function App() {
           <input
             type="file"
             accept="application/pdf"
-            onChange={onFileChange}
+            onChange={
+              onFileChange
+            }
           />
         </label>
 
@@ -485,7 +496,8 @@ export default function App() {
               fontSize: 12,
               background:
                 "#fff7ed",
-              color: "#333",
+              color:
+                "#333",
               padding: 10,
               borderRadius: 8,
             }}
@@ -501,10 +513,10 @@ export default function App() {
             <input
               type="number"
               value={year}
-              onChange={(event) =>
+              onChange={(e) =>
                 setYear(
                   Number(
-                    event.target.value
+                    e.target.value
                   )
                 )
               }
@@ -519,10 +531,10 @@ export default function App() {
               min="1"
               max="12"
               value={month}
-              onChange={(event) =>
+              onChange={(e) =>
                 setMonth(
                   Number(
-                    event.target.value
+                    e.target.value
                   )
                 )
               }
@@ -534,9 +546,9 @@ export default function App() {
 
             <select
               value={person}
-              onChange={(event) =>
+              onChange={(e) =>
                 choose(
-                  event.target.value
+                  e.target.value
                 )
               }
             >
@@ -544,11 +556,16 @@ export default function App() {
                 請選擇
               </option>
 
-{people.map((name) => (
-  <option key={name} value={name}>
-    {name}
-  </option>
-))}
+              {people.map(
+                (name) => (
+                  <option
+                    key={name}
+                    value={name}
+                  >
+                    {name}
+                  </option>
+                )
+              )}
             </select>
           </label>
         </div>
@@ -575,6 +592,328 @@ export default function App() {
                   value={
                     rule.start
                   }
-                  onChange={(
-                    event
-                  ) =>
+                  onChange={(e) =>
+                    setRuleTime(
+                      rule.code,
+                      "start",
+                      e.target
+                        .value
+                    )
+                  }
+                />
+
+                <span>
+                  至
+                </span>
+
+                <input
+                  type="time"
+                  value={
+                    rule.end
+                  }
+                  onChange={(e) =>
+                    setRuleTime(
+                      rule.code,
+                      "end",
+                      e.target
+                        .value
+                    )
+                  }
+                />
+              </div>
+            )
+          )}
+        </div>
+
+        <small>
+          目前假設 D 08–16、E
+          16–00、N 00–08、C
+          08–17，可直接修改。
+        </small>
+      </section>
+
+      <section>
+        <h2>
+          3. 確認辨識結果
+        </h2>
+
+        {profile ===
+        undefined ? null : (
+          <div
+            style={{
+              border:
+                "2px solid #0f766e",
+              borderRadius: 12,
+              padding: 12,
+              marginBottom: 12,
+            }}
+          >
+            <button
+              className="primary"
+              type="button"
+              style={{
+                marginTop: 0,
+
+                background:
+                  customActive
+                    ? "#b45309"
+                    : "#0f766e",
+              }}
+              onClick={() =>
+                setUseCustom(
+                  !useCustom
+                )
+              }
+            >
+              {customActive
+                ? "已套用 " +
+                  profile.name +
+                  " 專屬設定（點此取消）"
+                : "套用 " +
+                  profile.name +
+                  " 專屬設定"}
+            </button>
+
+            <ul
+              style={{
+                margin:
+                  "10px 0 0",
+
+                paddingLeft: 20,
+
+                fontSize: 13,
+              }}
+            >
+              {profile.notes.map(
+                (text) => (
+                  <li key={text}>
+                    {text}
+                  </li>
+                )
+              )}
+            </ul>
+          </div>
+        )}
+
+        {noEntries ? (
+          <div className="empty">
+            選擇 PDF 與姓名後，班表會出現在這裡。
+          </div>
+        ) : (
+          <div className="list">
+            {entries.map(
+              (
+                entry,
+                index
+              ) => (
+                <div
+                  className="entry"
+                  key={index}
+                >
+                  <input
+                    aria-label="匯出"
+                    type="checkbox"
+                    checked={
+                      entry.enabled
+                    }
+                    onChange={(e) =>
+                      patch(
+                        index,
+                        {
+                          enabled:
+                            e
+                              .target
+                              .checked,
+                        }
+                      )
+                    }
+                  />
+
+                  <b>
+                    {month}/
+                    {entry.day}
+                  </b>
+
+                  <input
+                    value={
+                      entry.main
+                    }
+                    onChange={(e) =>
+                      patch(
+                        index,
+                        {
+                          main:
+                            e
+                              .target
+                              .value,
+                        }
+                      )
+                    }
+                  />
+
+                  <input
+                    placeholder="註記"
+                    value={
+                      entry.note
+                    }
+                    onChange={(e) =>
+                      patch(
+                        index,
+                        {
+                          note:
+                            e
+                              .target
+                              .value,
+                        }
+                      )
+                    }
+                  />
+
+                  <small>
+                    原文{" "}
+                    {entry.raw ===
+                    ""
+                      ? "（空白）"
+                      : entry.raw}
+
+                    {previewTitle(
+                      entry.main
+                    ) === ""
+                      ? ""
+                      : " → " +
+                        previewTitle(
+                          entry.main
+                        )}
+                  </small>
+                </div>
+              )
+            )}
+          </div>
+        )}
+
+        {person ===
+        "謝佩娟" ? (
+          <button
+            className="primary"
+            type="button"
+            onClick={
+              copyForTimeTree
+            }
+            disabled={
+              noEntries
+            }
+            style={{
+              background:
+                "#2563eb",
+
+              marginBottom: 12,
+            }}
+          >
+            複製班表到 TimeTree
+          </button>
+        ) : null}
+
+        <p className="status">
+          {msg}
+        </p>
+
+        {customActive ? (
+          <div>
+            <button
+              className="primary"
+              type="button"
+              onClick={() =>
+                exportNow(
+                  [],
+                  "-全部"
+                )
+              }
+              disabled={
+                noEntries
+              }
+            >
+              全部匯出 ICS
+            </button>
+
+            <button
+              className="primary"
+              type="button"
+              style={
+                altBtn
+              }
+              onClick={() =>
+                exportNow(
+                  ["D"],
+                  "-白班"
+                )
+              }
+              disabled={
+                noEntries
+              }
+            >
+              只匯出白班
+            </button>
+
+            <button
+              className="primary"
+              type="button"
+              style={
+                altBtn
+              }
+              onClick={() =>
+                exportNow(
+                  ["E"],
+                  "-小夜班"
+                )
+              }
+              disabled={
+                noEntries
+              }
+            >
+              只匯出小夜班
+            </button>
+
+            <button
+              className="primary"
+              type="button"
+              style={
+                altBtn
+              }
+              onClick={() =>
+                exportNow(
+                  ["N"],
+                  "-大夜班"
+                )
+              }
+              disabled={
+                noEntries
+              }
+            >
+              只匯出大夜班
+            </button>
+          </div>
+        ) : (
+          <button
+            className="primary"
+            type="button"
+            onClick={() =>
+              exportNow(
+                [],
+                "-班表"
+              )
+            }
+            disabled={
+              noEntries
+            }
+          >
+            匯出 ICS
+          </button>
+        )}
+      </section>
+
+      <footer>
+        座標式辨識，匯入前請逐日確認，尤其是 #、/、新與跨日班。
+      </footer>
+    </main>
+  );
+}
