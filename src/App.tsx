@@ -1,7 +1,29 @@
 import { useState } from "react";
 import { extract, names, rowFor, detectYearMonth, debugInfo, nameDebug } from "./services/parser";
 import { makeICS, downloadICS } from "./services/ics";
+import type { IcsOptions } from "./services/ics";
 import type { Entry, ShiftRule, TextItem } from "./types";
+
+// ===== 個人專屬設定：以後要幫別人加，就在這裡多加一筆 =====
+type Profile = {
+  name: string;
+  sameDayOnly: boolean;
+  titles: Record<string, string>;
+  notes: string[];
+};
+
+const PROFILES: Profile[] = [
+  {
+    name: "謝佩娟",
+    sameDayOnly: true,
+    titles: { D: "白班", E: "小夜班", N: "大夜班" },
+    notes: [
+      "小夜班、大夜班只顯示在開始當天",
+      "行程標題：白班／小夜班／大夜班",
+      "可分班別匯出，方便在 TimeTree 對應標籤",
+    ],
+  },
+];
 
 const LEAVE_RULES = [
   { code: "息", label: "休息日" },
@@ -49,6 +71,10 @@ export default function App() {
   const [rules, setRules] = useState<ShiftRule[]>(initialRules);
   const [msg, setMsg] = useState("尚未選擇班表");
   const [debug, setDebug] = useState("");
+  const [useCustom, setUseCustom] = useState(false);
+
+  const profile = PROFILES.find((p) => p.name === person);
+  const customActive = useCustom && profile !== undefined;
 
   async function upload(f: File | null) {
     if (f === null) return;
@@ -62,6 +88,7 @@ export default function App() {
       setMonth(ym.month);
       setItems(x);
       setPeople(ns);
+      setUseCustom(false);
       if (ns.length > 0) {
         const first = ns.slice(0, 1).join("");
         setPerson(first);
@@ -87,6 +114,7 @@ export default function App() {
 
   function choose(n: string) {
     setPerson(n);
+    setUseCustom(false);
     if (n === "") {
       setEntries([]);
     } else {
@@ -113,19 +141,29 @@ export default function App() {
     );
   }
 
-  function exportNow() {
+  function exportNow(onlyCodes: string[], suffix: string) {
     if (person === "") {
       setMsg("請先選擇姓名");
       return;
     }
+    let opts: IcsOptions = { sameDayOnly: false, titles: {}, onlyCodes: onlyCodes };
+    if (customActive && profile) {
+      opts = { sameDayOnly: profile.sameDayOnly, titles: profile.titles, onlyCodes: onlyCodes };
+    }
     const mm = String(month).padStart(2, "0");
-    const filename = year + "-" + mm + "-" + person + "-班表.ics";
-    downloadICS(makeICS(entries, rules, year, month, person), filename);
-    setMsg("ICS 已產生。請在 iPhone 開啟下載檔並加入行事曆。");
+    const filename = year + "-" + mm + "-" + person + suffix + ".ics";
+    downloadICS(makeICS(entries, rules, year, month, person, opts), filename);
+    setMsg("已產生 " + filename + "，請在 iPhone 開啟並加入行事曆。");
+  }
+
+  function previewTitle(code: string): string {
+    if (customActive && profile && profile.titles[code]) return profile.titles[code];
+    return "";
   }
 
   const workRules = rules.filter((r) => WORK_CODES.includes(r.code));
   const noEntries = entries.length === 0;
+  const altBtn = { background: "#115e59", marginTop: 8 };
 
   return (
     <main>
@@ -185,6 +223,25 @@ export default function App() {
 
       <section>
         <h2>3. 確認辨識結果</h2>
+
+        {profile === undefined ? null : (
+          <div style={{ border: "2px solid #0f766e", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+            <button
+              className="primary"
+              type="button"
+              style={{ marginTop: 0, background: customActive ? "#b45309" : "#0f766e" }}
+              onClick={() => setUseCustom(useCustom === false)}
+            >
+              {customActive ? "已套用 " + profile.name + " 專屬設定（點此取消）" : "套用 " + profile.name + " 專屬設定"}
+            </button>
+            <ul style={{ margin: "10px 0 0", paddingLeft: 20, fontSize: 13 }}>
+              {profile.notes.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {noEntries ? (
           <div className="empty">選擇 PDF 與姓名後，班表會出現在這裡。</div>
         ) : (
@@ -200,14 +257,35 @@ export default function App() {
                 <b>{month}/{e.day}</b>
                 <input value={e.main} onChange={(x) => patch(i, { main: x.target.value })} />
                 <input placeholder="註記" value={e.note} onChange={(x) => patch(i, { note: x.target.value })} />
-                <small>原文 {e.raw === "" ? "（空白）" : e.raw}</small>
+                <small>
+                  原文 {e.raw === "" ? "（空白）" : e.raw}
+                  {previewTitle(e.main) === "" ? "" : " → " + previewTitle(e.main)}
+                </small>
               </div>
             ))}
           </div>
         )}
-        <button className="primary" type="button" onClick={exportNow} disabled={noEntries}>
-          匯出 ICS
-        </button>
+
+        {customActive ? (
+          <div>
+            <button className="primary" type="button" onClick={() => exportNow([], "-全部")} disabled={noEntries}>
+              全部匯出
+            </button>
+            <button className="primary" type="button" style={altBtn} onClick={() => exportNow(["D"], "-白班")} disabled={noEntries}>
+              只匯出白班
+            </button>
+            <button className="primary" type="button" style={altBtn} onClick={() => exportNow(["E"], "-小夜班")} disabled={noEntries}>
+              只匯出小夜班
+            </button>
+            <button className="primary" type="button" style={altBtn} onClick={() => exportNow(["N"], "-大夜班")} disabled={noEntries}>
+              只匯出大夜班
+            </button>
+          </div>
+        ) : (
+          <button className="primary" type="button" onClick={() => exportNow([], "-班表")} disabled={noEntries}>
+            匯出 ICS
+          </button>
+        )}
       </section>
 
       <footer>座標式辨識，匯入前請逐日確認，尤其是 #、/、新與跨日班。</footer>
