@@ -3,21 +3,40 @@ import { extract, names, rowFor, detectYearMonth, debugInfo } from "./services/p
 import { makeICS, downloadICS } from "./services/ics";
 import type { Entry, ShiftRule, TextItem } from "./types";
 
-const LEAVE_RULES: [string, string][] = [
-  ["息", "休息日"], ["例", "例假日"], ["國", "國定假日"], ["補", "補休"],
-  ["特", "特休"], ["公", "公假"], ["病", "病假"], ["產檢", "產檢假"],
-  ["喪", "喪假"], ["共識", "共識活動"], ["體側", "體側"],
+const LEAVE_RULES = [
+  { code: "息", label: "休息日" },
+  { code: "例", label: "例假日" },
+  { code: "國", label: "國定假日" },
+  { code: "補", label: "補休" },
+  { code: "特", label: "特休" },
+  { code: "公", label: "公假" },
+  { code: "病", label: "病假" },
+  { code: "產檢", label: "產檢假" },
+  { code: "喪", label: "喪假" },
+  { code: "共識", label: "共識活動" },
+  { code: "體側", label: "體側" },
 ];
 
-const initial: ShiftRule[] = [
+const WORK_RULES: ShiftRule[] = [
   { code: "D", label: "D班（白班）", start: "08:00", end: "16:00", crosses: false, defaultEnabled: true },
   { code: "E", label: "E班（小夜）", start: "16:00", end: "00:00", crosses: true, defaultEnabled: true },
   { code: "N", label: "N班（大夜）", start: "00:00", end: "08:00", crosses: false, defaultEnabled: true },
   { code: "C", label: "C班", start: "08:00", end: "17:00", crosses: false, defaultEnabled: true },
-  ...LEAVE_RULES.map(([code, label]) => ({
-    code, label, start: "00:00", end: "00:00", crosses: false, allDay: true, defaultEnabled: false,
-  })),
 ];
+
+const initialRules: ShiftRule[] = WORK_RULES.concat(
+  LEAVE_RULES.map((r) => ({
+    code: r.code,
+    label: r.label,
+    start: "00:00",
+    end: "00:00",
+    crosses: false,
+    allDay: true,
+    defaultEnabled: false,
+  }))
+);
+
+const WORK_CODES = ["D", "E", "N", "C"];
 
 export default function App() {
   const now = new Date();
@@ -27,12 +46,12 @@ export default function App() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [rules, setRules] = useState<ShiftRule[]>(initial);
+  const [rules, setRules] = useState<ShiftRule[]>(initialRules);
   const [msg, setMsg] = useState("尚未選擇班表");
   const [debug, setDebug] = useState("");
 
-  async function upload(f?: File) {
-    if (!f) return;
+  async function upload(f: File | null) {
+    if (f === null) return;
     setMsg("正在讀取 PDF…");
     setDebug("");
     try {
@@ -43,11 +62,14 @@ export default function App() {
       setMonth(ym.month);
       setItems(x);
       setPeople(ns);
-      setPerson(ns[0] || "");
-      setEntries(ns[0] ? rowFor(x, ns[0]) : []);
-      if (ns.length) {
+      if (ns.length > 0) {
+        const first = ns.slice(0, 1).join("");
+        setPerson(first);
+        setEntries(rowFor(x, first));
         setMsg("找到 " + ns.length + " 個可能姓名，請確認班表。");
       } else {
+        setPerson("");
+        setEntries([]);
         setMsg("找不到姓名，請把下方診斷資訊截圖回報。");
         setDebug(debugInfo(x));
       }
@@ -56,28 +78,53 @@ export default function App() {
     }
   }
 
-  function choose(n: string) {
-    setPerson(n);
-    setEntries(n ? rowFor(items, n) : []);
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const list = e.target.files;
+    if (list === null) return;
+    upload(list.item(0));
   }
 
-  function patch(i: number, p: Partial<Entry>) {
-    setEntries((v) => v.map((e, j) => (j === i ? { ...e, ...p } : e)));
+  function choose(n: string) {
+    setPerson(n);
+    if (n === "") {
+      setEntries([]);
+    } else {
+      setEntries(rowFor(items, n));
+    }
+  }
+
+  function patch(index: number, p: Partial<Entry>) {
+    setEntries((list) =>
+      list.map((e, j) => {
+        if (j === index) return Object.assign({}, e, p);
+        return e;
+      })
+    );
   }
 
   function setRuleTime(code: string, field: "start" | "end", value: string) {
-    setRules((v) => v.map((x) => (x.code === code ? { ...x, [field]: value } : x)));
+    setRules((list) =>
+      list.map((x) => {
+        if (x.code !== code) return x;
+        if (field === "start") return Object.assign({}, x, { start: value });
+        return Object.assign({}, x, { end: value });
+      })
+    );
   }
 
   function exportNow() {
-    if (!person) {
+    if (person === "") {
       setMsg("請先選擇姓名");
       return;
     }
-    const filename = year + "-" + String(month).padStart(2, "0") + "-" + person + "-班表.ics";
+    const mm = String(month).padStart(2, "0");
+    const filename = year + "-" + mm + "-" + person + "-班表.ics";
     downloadICS(makeICS(entries, rules, year, month, person), filename);
     setMsg("ICS 已產生。請在 iPhone 開啟下載檔並加入行事曆。");
   }
+
+  const workRules = rules.filter((r) => WORK_CODES.includes(r.code));
+  const noEntries = entries.length === 0;
 
   return (
     <main>
@@ -91,10 +138,10 @@ export default function App() {
         <h2>1. 選擇班表</h2>
         <label className="upload">
           選擇 PDF
-          <input type="file" accept="application/pdf" onChange={(e) => upload(e.target.files?.[0])} />
+          <input type="file" accept="application/pdf" onChange={onFileChange} />
         </label>
         <p className="status">{msg}</p>
-        {debug && (
+        {debug === "" ? null : (
           <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, background: "#fff7ed", color: "#333", padding: 10, borderRadius: 8 }}>
             {debug}
           </pre>
@@ -102,11 +149,11 @@ export default function App() {
         <div className="grid">
           <label>
             年份
-            <input type="number" value={year} onChange={(e) => setYear(+e.target.value)} />
+            <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
           </label>
           <label>
             月份
-            <input type="number" min="1" max="12" value={month} onChange={(e) => setMonth(+e.target.value)} />
+            <input type="number" min="1" max="12" value={month} onChange={(e) => setMonth(Number(e.target.value))} />
           </label>
           <label>
             姓名
@@ -123,23 +170,21 @@ export default function App() {
       <section>
         <h2>2. 暫定班別時間</h2>
         <div className="rules">
-          {rules
-            .filter((r) => ["D", "E", "N", "C"].includes(r.code))
-            .map((r) => (
-              <div className="rule" key={r.code}>
-                <b>{r.code}</b>
-                <input type="time" value={r.start} onChange={(e) => setRuleTime(r.code, "start", e.target.value)} />
-                <span>至</span>
-                <input type="time" value={r.end} onChange={(e) => setRuleTime(r.code, "end", e.target.value)} />
-              </div>
-            ))}
+          {workRules.map((r) => (
+            <div className="rule" key={r.code}>
+              <b>{r.code}</b>
+              <input type="time" value={r.start} onChange={(e) => setRuleTime(r.code, "start", e.target.value)} />
+              <span>至</span>
+              <input type="time" value={r.end} onChange={(e) => setRuleTime(r.code, "end", e.target.value)} />
+            </div>
+          ))}
         </div>
         <small>目前假設 D 08–16、E 16–00、N 00–08、C 08–17，可直接修改。</small>
       </section>
 
       <section>
         <h2>3. 確認辨識結果</h2>
-        {entries.length === 0 ? (
+        {noEntries ? (
           <div className="empty">選擇 PDF 與姓名後，班表會出現在這裡。</div>
         ) : (
           <div className="list">
@@ -154,12 +199,12 @@ export default function App() {
                 <b>{month}/{e.day}</b>
                 <input value={e.main} onChange={(x) => patch(i, { main: x.target.value })} />
                 <input placeholder="註記" value={e.note} onChange={(x) => patch(i, { note: x.target.value })} />
-                <small>原文 {e.raw || "（空白）"}</small>
+                <small>原文 {e.raw === "" ? "（空白）" : e.raw}</small>
               </div>
             ))}
           </div>
         )}
-        <button className="primary" type="button" onClick={exportNow} disableds.length}>
+        <button className="primary" type="button" onClick={exportNow} disabled={noEntries}>
           匯出 ICS
         </button>
       </section>
