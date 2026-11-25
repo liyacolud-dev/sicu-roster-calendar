@@ -8,6 +8,10 @@ import {
   copyTimeTreePayload,
 } from "./services/timetree";
 
+import {
+  TIMETREE_BOOKMARKLET,
+} from "./services/bookmarklet";
+
 // ===== 個人專屬設定：以後要幫別人加，就在這裡多加一筆 =====
 type Profile = {
   name: string;
@@ -76,7 +80,10 @@ export default function App() {
   const [msg, setMsg] = useState("尚未選擇班表");
   const [debug, setDebug] = useState("");
   const [useCustom, setUseCustom] = useState(false);
-
+const [
+  bookmarkCopied,
+  setBookmarkCopied,
+] = useState(false);
   const profile = PROFILES.find((p) => p.name.normalize("NFKC") === person.normalize("NFKC"));
   const customActive = useCustom && profile !== undefined;
 
@@ -168,6 +175,69 @@ export default function App() {
   const workRules = rules.filter((r) => WORK_CODES.includes(r.code));
   const noEntries = entries.length === 0;
   const altBtn = { background: "#115e59", marginTop: 8 };
+
+  async function copyBookmarklet() {
+  try {
+    if (
+      navigator.clipboard &&
+      window.isSecureContext
+    ) {
+      await navigator.clipboard.writeText(
+        TIMETREE_BOOKMARKLET
+      );
+    } else {
+      const area =
+        document.createElement(
+          "textarea"
+        );
+
+      area.value =
+        TIMETREE_BOOKMARKLET;
+
+      area.style.position =
+        "fixed";
+
+      area.style.left =
+        "-9999px";
+
+      document.body.appendChild(
+        area
+      );
+
+      area.focus();
+      area.select();
+
+      const copied =
+        document.execCommand(
+          "copy"
+        );
+
+      document.body.removeChild(
+        area
+      );
+
+      if (
+        copied === false
+      ) {
+        throw new Error(
+          "無法複製書籤程式"
+        );
+      }
+    }
+
+    setBookmarkCopied(true);
+
+    setMsg(
+      "已複製 SICU匯入 書籤程式。請編輯 Safari 書籤並貼到網址欄。"
+    );
+  } catch (error) {
+    setMsg(
+      "複製書籤程式失敗：" +
+        String(error)
+    );
+  }
+}
+  
   async function copyForTimeTree() {
     if (person === "") {
       setMsg("請先選擇姓名");
@@ -228,7 +298,93 @@ export default function App() {
         <h1>SICU 班表 → 行事曆</h1>
         <p>PDF 僅在裝置內解析，不會上傳伺服器。</p>
       </header>
+<section>
+  <h2>
+    首次使用：安裝 TimeTree 匯入書籤
+  </h2>
 
+  <p>
+    這個步驟只需要做一次。Safari
+    不允許網站直接安裝 JavaScript
+    書籤，因此需要先建立普通書籤，再把網址換成匯入程式。
+  </p>
+
+  <ol
+    style={{
+      paddingLeft: 22,
+      lineHeight: 1.8,
+    }}
+  >
+    <li>
+      在 Safari 任意頁面點「分享」。
+    </li>
+
+    <li>
+      選擇「加入書籤」。
+    </li>
+
+    <li>
+      名稱改成「SICU匯入」。
+    </li>
+
+    <li>
+      回到書籤列表，長按
+      「SICU匯入」並選擇「編輯」。
+    </li>
+
+    <li>
+      把網址全部刪除，貼上下面複製的程式。
+    </li>
+  </ol>
+
+  <button
+    className="primary"
+    type="button"
+    onClick={
+      copyBookmarklet
+    }
+    style={{
+      background:
+        "#7c3aed",
+    }}
+  >
+    {bookmarkCopied
+      ? "已複製書籤程式"
+      : "複製 SICU匯入 書籤程式"}
+  </button>
+
+  <details
+    style={{
+      marginTop: 12,
+    }}
+  >
+    <summary>
+      顯示書籤程式
+    </summary>
+
+    <textarea
+      readOnly
+      value={
+        TIMETREE_BOOKMARKLET
+      }
+      onFocus={(event) =>
+        event.currentTarget.select()
+      }
+      style={{
+        width: "100%",
+        minHeight: 150,
+        marginTop: 10,
+        padding: 10,
+        fontSize: 12,
+        fontFamily:
+          "monospace",
+        borderRadius: 8,
+        border:
+          "1px solid #b6cbc6",
+      }}
+    />
+  </details>
+</section>
       <section>
         <h2>1. 選擇班表</h2>
         <label className="upload">
