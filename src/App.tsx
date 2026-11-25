@@ -419,7 +419,7 @@ const [
       </section>
 
       <section>
-        <h2>2. 暫定班別時間</h2>
+        <h2>2. 設定班別時間(可忽略)</h2>
         <div className="rules">
           {workRules.map((r) => (
             <div className="rule" key={r.code}>
@@ -508,7 +508,7 @@ const [
           </div>
         ) : (
           <button className="primary" type="button" onClick={() => exportNow([], "-班表")} disabled={noEntries}>
-            匯出 ICS
+            匯出 ICS(Apple、Google日曆)
           </button>
         )}
       </section>
