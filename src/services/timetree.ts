@@ -177,23 +177,7 @@ export async function copyTimeTreePayload(
   }
 }
 export function openTimeTreeImport(payload: TimeTreeImportPayload): void {
-  const json = JSON.stringify(payload);
-  const bytes = new TextEncoder().encode(json);
+  window.name = JSON.stringify(payload);
 
-  let binary = "";
-
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-
-  const encoded = btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-
-  const target =
-    "https://timetreeapp.com/?sicu=" +
-    encodeURIComponent(encoded);
-
-  window.location.href = target;
+  window.location.href = "https://timetreeapp.com/";
 }
