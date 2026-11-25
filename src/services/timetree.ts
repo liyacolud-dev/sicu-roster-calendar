@@ -176,8 +176,3 @@ export async function copyTimeTreePayload(
     throw new Error("瀏覽器無法使用剪貼簿");
   }
 }
-export function openTimeTreeImport(payload: TimeTreeImportPayload): void {
-  window.name = JSON.stringify(payload);
-
-  window.location.href = "https://timetreeapp.com/";
-}
