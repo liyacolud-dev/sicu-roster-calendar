@@ -544,16 +544,11 @@ export default function App() {
                 請選擇
               </option>
 
-              {people.map(
-                (name) => (
-                  <option
-                    key={name}
-                    value={name}
-                  >
-                    {name}
-                  </option>
-                )
-              )}
+{people.map((name) => (
+  <option key={name} value={name}>
+    {name}
+  </option>
+))}
             </select>
           </label>
         </div>
