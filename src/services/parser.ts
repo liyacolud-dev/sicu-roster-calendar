@@ -147,7 +147,8 @@ type NameRow = { name: string; page: number; y: number };
 const NAME_RE = /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u{20000}-\u{2ffff}]{2,5}$/u;
 
 function cleanName(s: string): string {
-  return s.replace(/[\s*＊#()（）]/g, "");
+  const first = s.trim().split(/\s+/)[0] || "";
+  return first.replace(/[*＊#()（）]/g, "");
 }
 
 function nameRows(items: TextItem[]): NameRow[] {
