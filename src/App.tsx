@@ -296,7 +296,7 @@ const [
       <header>
         <span className="badge">Local only</span>
         <h1>SICU 班表 → 匯入TimeTree或一般行事曆</h1>
-        <p>Bryan開發小工具</p>
+        <p>Bryan開發給娟娟的小工具</p>
       </header>
 <section>
   <h2>
