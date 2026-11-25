@@ -19,12 +19,39 @@ export async function extract(file: File): Promise<TextItem[]> {
   const out: TextItem[] = [];
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
+    const viewport = page.getViewport({ scale: 1 });
     const content = await page.getTextContent();
-    for (const raw of content.items as any[]) {
-      const text: string = raw.str || "";
-      if (!text.trim()) continue;
-      out.push({ text, x: raw.transform[4], y: raw.transform[5], width: raw.width || 0, page: p });
+    const raws: any[] = (content.items as any[]).filter(
+      (r) => typeof r.str === "string" && r.str.trim() !== ""
+    );
+    const mats = raws.map((r) => pdfjsLib.Util.transform(viewport.transform, r.transform));
+
+    // 判斷這一頁文字的主要方向（處理旋轉過的頁面）
+    const votes = new Map<string, number>();
+    for (const m of mats) {
+      const len = Math.hypot(m[0], m[1]) || 1;
+      const key = Math.round(m[0] / len) + "," + Math.round(m[1] / len);
+      votes.set(key, (votes.get(key) || 0) + 1);
     }
+    let dir = "1,0";
+    let best = 0;
+    votes.forEach((v, k) => {
+      if (v > best) {
+        best = v;
+        dir = k;
+      }
+    });
+    const parts = dir.split(",").map(Number);
+    const dx = parts[0];
+    const dy = parts[1];
+
+    // 把座標轉回「文字水平、上方為大」的方向
+    raws.forEach((r, i) => {
+      const m = mats[i];
+      const X = dx * m[4] + dy * m[5];
+      const Y = -dy * m[4] + dx * m[5];
+      out.push({ text: r.str, x: X, y: -Y, width: r.width || 0, page: p });
+    });
   }
   return out;
 }
