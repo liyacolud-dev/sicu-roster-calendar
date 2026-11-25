@@ -65,19 +65,21 @@ function localDateTime(
   );
 }
 
-function localMidnight(
+function allDayDate(
   year: number,
   month: number,
   day: number
 ): Date {
   return new Date(
-    year,
-    month - 1,
-    day,
-    0,
-    0,
-    0,
-    0
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+      0,
+      0,
+      0,
+      0
+    )
   );
 }
 
@@ -144,23 +146,19 @@ export function buildTimeTreePayload(
      */
     const allDay = true;
 
-    const start =
-      localMidnight(
-        year,
-        month,
-        entry.day
-      );
+const start =
+  allDayDate(
+    year,
+    month,
+    entry.day
+  );
 
-    /*
-     * TimeTree 的單日全天活動使用同一天作為
-     * start_at 與 end_at，避免延伸到隔天。
-     */
-    const end =
-      localMidnight(
-        year,
-        month,
-        entry.day
-      );
+const end =
+  allDayDate(
+    year,
+    month,
+    entry.day
+  );
 
     /*
      * 這兩個值只用於備註，
