@@ -67,6 +67,7 @@ export default function App() {
         setPerson(first);
         setEntries(rowFor(x, first));
         setMsg("找到 " + ns.length + " 個可能姓名，請確認班表。");
+        setDebug(nameDebug(x));
       } else {
         setPerson("");
         setEntries([]);
