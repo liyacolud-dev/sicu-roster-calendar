@@ -295,8 +295,8 @@ const [
     <main>
       <header>
         <span className="badge">Local only</span>
-        <h1>SICU 班表 → 行事曆</h1>
-        <p>PDF 僅在裝置內解析，不會上傳伺服器。</p>
+        <h1>SICU 班表 → 匯入TimeTree或一般行事曆</h1>
+        <p>Bryan開發小工具</p>
       </header>
 <section>
   <h2>
