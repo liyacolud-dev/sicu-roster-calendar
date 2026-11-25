@@ -222,6 +222,78 @@ export default function App() {
       setMsg("複製失敗：" + String(error));
     }
   }
+  function goToTimeTree() {
+  if (person === "") {
+    setMsg("請先選擇姓名");
+    return;
+  }
+
+  if (person !== "謝佩娟") {
+    setMsg("目前 TimeTree 直接匯入只開放謝佩娟測試。");
+    return;
+  }
+
+  const payload = buildTimeTreePayload(
+    entries,
+    rules,
+    year,
+    month,
+    person
+  );
+
+  if (payload.events.length === 0) {
+    setMsg("沒有可匯入 TimeTree 的 D、E、N 班別。");
+    return;
+  }
+
+  const dCount = payload.events.filter(
+    (event) => event.shift === "D"
+  ).length;
+
+  const eCount = payload.events.filter(
+    (event) => event.shift === "E"
+  ).length;
+
+  const nCount = payload.events.filter(
+    (event) => event.shift === "N"
+  ).length;
+
+  const confirmed = window.confirm(
+    person +
+      "｜" +
+      year +
+      " 年 " +
+      month +
+      " 月" +
+      String.fromCharCode(10) +
+      String.fromCharCode(10) +
+      "白班：" +
+      dCount +
+      " 筆" +
+      String.fromCharCode(10) +
+      "小夜班：" +
+      eCount +
+      " 筆" +
+      String.fromCharCode(10) +
+      "大夜班：" +
+      nCount +
+      " 筆" +
+      String.fromCharCode(10) +
+      String.fromCharCode(10) +
+      "總計：" +
+      payload.events.length +
+      " 筆" +
+      String.fromCharCode(10) +
+      String.fromCharCode(10) +
+      "確定前往 TimeTree？"
+  );
+
+  if (confirmed === false) {
+    return;
+  }
+
+  openTimeTreeImport(payload);
+}
   return (
     <main>
       <header>
