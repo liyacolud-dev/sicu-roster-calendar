@@ -144,25 +144,55 @@ function findHeader(items: TextItem[], page: number, month: number): Header {
 // ===== 姓名 =====
 type NameRow = { name: string; page: number; y: number };
 
+const NAME_RE = /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u{20000}-\u{2ffff}]{2,5}$/u;
+
+function cleanName(s: string): string {
+  return s.replace(/[\s*＊#()（）]/g, "");
+}
+
 function nameRows(items: TextItem[]): NameRow[] {
   const month = detectMonth(items);
-  const pages = [...new Set(items.map((i) => i.page))];
+  const pages = Array.from(new Set(items.map((i) => i.page)));
   const rows: NameRow[] = [];
   for (const page of pages) {
-    const { cols, y: headerY } = findHeader(items, page, month);
-    if (!cols.length) continue;
-    const firstX = cols[0].x;
+    const h = findHeader(items, page, month);
+    if (h.cols.length === 0) continue;
+    const firstX = h.cols[0].x;
     for (const it of items) {
       if (it.page !== page) continue;
-      const t = it.text.trim();
-      if (!/^[\u4e00-\u9fff]{2,4}$/.test(t)) continue;
+      if (it.x >= firstX - 5) continue;
+      if (it.y >= h.y - 2) continue;
+      const t = cleanName(it.text);
+      if (NAME_RE.test(t) === false) continue;
       if (NOT_NAME.has(t)) continue;
-      if (it.x >= firstX - 5) continue;     // 在日期欄左邊
-      if (it.y >= headerY - 2) continue;    // 在表頭下方
-      rows.push({ name: t, page, y: it.y });
+      rows.push({ name: t, page: page, y: it.y });
     }
   }
   return rows.sort((a, b) => a.page - b.page || b.y - a.y);
+}
+
+export function nameDebug(items: TextItem[]): string {
+  const month = detectMonth(items);
+  const pages = Array.from(new Set(items.map((i) => i.page)));
+  const all = nameRows(items);
+  const lines: string[] = [];
+  for (const page of pages) {
+    const found = Array.from(new Set(all.filter((r) => r.page === page).map((r) => r.name)));
+    lines.push("第" + page + "頁 找到 " + found.length + " 人");
+    const h = findHeader(items, page, month);
+    if (h.cols.length === 0) continue;
+    const firstX = h.cols[0].x;
+    for (const it of items) {
+      if (it.page !== page) continue;
+      if (it.x >= firstX - 5) continue;
+      if (it.y >= h.y - 2) continue;
+      const t = cleanName(it.text);
+      if (t === "") continue;
+      if (NAME_RE.test(t) && NOT_NAME.has(t) === false) continue;
+      lines.push("　排除：「" + it.text + "」");
+    }
+  }
+  return lines.slice(0, 60).join(" ｜ ");
 }
 
 export function names(items: TextItem[]): string[] {
