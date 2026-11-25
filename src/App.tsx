@@ -394,17 +394,20 @@ export default function App() {
             ))}
           </div>
         )}
-        {person === "謝佩娟" ? (
-          <button
-            className="primary"
-            type="button"
-            onClick={copyForTimeTree}
-            disabled={noEntries}
-            style={{ background: "#2563eb" }}
-          >
-            複製班表到 TimeTree
-          </button>
-        ) : null}
+{person === "謝佩娟" ? (
+  <button
+    className="primary"
+    type="button"
+    onClick={goToTimeTree}
+    disabled={noEntries}
+    style={{
+      background: "#2563eb",
+      marginBottom: 12,
+    }}
+  >
+    前往 TimeTree 匯入
+  </button>
+) : null}
 
  <p className="status">{msg}</p>
         
