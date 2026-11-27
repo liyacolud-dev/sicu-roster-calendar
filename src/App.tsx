@@ -48,10 +48,38 @@ const LEAVE_RULES = [
 ];
 
 const WORK_RULES: ShiftRule[] = [
-  { code: "D", label: "D班（白班）", start: "08:00", end: "16:00", crosses: false, defaultEnabled: true },
-  { code: "E", label: "E班（小夜）", start: "16:00", end: "00:00", crosses: true, defaultEnabled: true },
-  { code: "N", label: "N班（大夜）", start: "00:00", end: "08:00", crosses: false, defaultEnabled: true },
-  { code: "C", label: "C班", start: "08:00", end: "17:00", crosses: false, defaultEnabled: true },
+  {
+    code: "D",
+    label: "白班",
+    start: "07:30",
+    end: "16:00",
+    crosses: false,
+    defaultEnabled: true,
+  },
+  {
+    code: "E",
+    label: "小夜班",
+    start: "15:30",
+    end: "23:30",
+    crosses: false,
+    defaultEnabled: true,
+  },
+  {
+    code: "N",
+    label: "大夜班",
+    start: "23:00",
+    end: "08:00",
+    crosses: true,
+    defaultEnabled: true,
+  },
+  {
+    code: "C",
+    label: "上課",
+    start: "08:00",
+    end: "17:00",
+    crosses: false,
+    defaultEnabled: true,
+  },
 ];
 
 const initialRules: ShiftRule[] = WORK_RULES.concat(
